@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"testing"
 
-	sqlite3 "github.com/mattn/go-sqlite3"
-	"github.com/mattn/go-sqlite3/internal/sqlite3test"
+	sqlite3 "github.com/marco6/go-sqlite3"
+	"github.com/marco6/go-sqlite3/internal/sqlite3test"
 )
 
 func TestRaw(t *testing.T) {

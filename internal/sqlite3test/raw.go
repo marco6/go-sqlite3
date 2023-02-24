@@ -20,7 +20,7 @@ static inline int _create_function(sqlite3* c) {
 */
 import "C"
 import (
-	sqlite3 "github.com/mattn/go-sqlite3"
+	sqlite3 "github.com/marco6/go-sqlite3"
 	"unsafe"
 )
 
