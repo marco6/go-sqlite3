@@ -10,6 +10,7 @@ package sqlite3
 
 import (
 	"database/sql/driver"
+	"unsafe"
 
 	"context"
 )
@@ -36,6 +37,10 @@ func (c *SQLiteConn) ExecContext(ctx context.Context, query string, args []drive
 // PrepareContext implement ConnPrepareContext.
 func (c *SQLiteConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
 	return c.prepare(ctx, query)
+}
+
+func FileControl[T any](c *SQLiteConn, dbName string, op int, arg *T) error {
+	return c.FileControl(dbName, op, unsafe.Pointer(arg))
 }
 
 // BeginTx implement ConnBeginTx.
