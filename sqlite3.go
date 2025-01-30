@@ -2018,7 +2018,10 @@ func (c *SQLiteConn) FileControl(dbName string, op int, arg unsafe.Pointer) erro
 
 	rv := C.sqlite3_file_control(c.db, cDBName, C.int(op), unsafe.Pointer(arg))
 	if rv != C.SQLITE_OK {
-		return c.lastError()
+		if err := c.lastError(); err != nil {
+			return err
+		}
+		return ErrNo(rv)
 	}
 	return nil
 }
