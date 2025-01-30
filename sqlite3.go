@@ -875,30 +875,30 @@ func (c *SQLiteConn) RegisterAggregator(name string, impl any, pure bool) error 
 // functions directly (which, due to fewer runtime reflection checks,
 // typically run an order of magnitude faster).  For example:
 //
-//    /*
-//    #include <sqlite3.h>
-//    ...
-//    void myFunc(sqlite3_context *context, int argc, sqlite3_value **argv) {
-//        // Function definition
-//    }
+//	/*
+//	#include <sqlite3.h>
+//	...
+//	void myFunc(sqlite3_context *context, int argc, sqlite3_value **argv) {
+//	    // Function definition
+//	}
 //
-//    int myfunc_setup(sqlite3 *db) {
-//        return sqlite3_create_function(db, "myFunc", ...);
-//    }
-//    */
-//    import "C"
+//	int myfunc_setup(sqlite3 *db) {
+//	    return sqlite3_create_function(db, "myFunc", ...);
+//	}
+//	*/
+//	import "C"
 //
-//    d := &sqlite3.SQLiteDriver{
-//        ConnectHook: func(c *SQLiteConn) error {
-//            return c.Raw(func(raw unsafe.Pointer) error {
-//                db := (*C.sqlite3)(raw)
-//                if rv := C.myfunc_setup(db); rv != C.SQLITE_OK {
-//                    return sqlite3.ErrNo(rv)
-//                }
-//                return nil
-//            }
-//         },
-//    }
+//	d := &sqlite3.SQLiteDriver{
+//	    ConnectHook: func(c *SQLiteConn) error {
+//	        return c.Raw(func(raw unsafe.Pointer) error {
+//	            db := (*C.sqlite3)(raw)
+//	            if rv := C.myfunc_setup(db); rv != C.SQLITE_OK {
+//	                return sqlite3.ErrNo(rv)
+//	            }
+//	            return nil
+//	        }
+//	     },
+//	}
 //
 // Note that as of 1.13, go doesn't correctly handle passing C
 // function pointers back to C functions, so C.sqlite3_create_function
@@ -1988,19 +1988,8 @@ func (c *SQLiteConn) SetLimit(id int, newVal int) int {
 //
 // See: sqlite3_file_control, https://www.sqlite.org/c3ref/file_control.html
 func (c *SQLiteConn) SetFileControlInt(dbName string, op int, arg int) error {
-	if dbName == "" {
-		dbName = "main"
-	}
-
-	cDBName := C.CString(dbName)
-	defer C.free(unsafe.Pointer(cDBName))
-
 	cArg := C.int(arg)
-	rv := C.sqlite3_file_control(c.db, cDBName, C.int(op), unsafe.Pointer(&cArg))
-	if rv != C.SQLITE_OK {
-		return c.lastError()
-	}
-	return nil
+	return c.FileControl(dbName, op, unsafe.Pointer(&cArg))
 }
 
 // SetFileControlInt64 invokes the xFileControl method on a given database. The
@@ -2016,17 +2005,23 @@ func (c *SQLiteConn) SetFileControlInt(dbName string, op int, arg int) error {
 //
 // See: sqlite3_file_control, https://www.sqlite.org/c3ref/file_control.html
 func (c *SQLiteConn) SetFileControlInt64(dbName string, op int, arg int64) error {
-	if dbName == "" {
-		dbName = "main"
+	cArg := C.sqlite3_int64(arg)
+	return c.FileControl(dbName, op, unsafe.Pointer(&cArg))
+}
+
+func (c *SQLiteConn) FileControl(dbName string, op int, arg unsafe.Pointer) error {
+	cDBName := (*C.char)(nil)
+	if dbName != "" {
+		cDBName = C.CString(dbName)
+		defer C.free(unsafe.Pointer(cDBName))
 	}
 
-	cDBName := C.CString(dbName)
-	defer C.free(unsafe.Pointer(cDBName))
-
-	cArg := C.sqlite3_int64(arg)
-	rv := C.sqlite3_file_control(c.db, cDBName, C.int(op), unsafe.Pointer(&cArg))
+	rv := C.sqlite3_file_control(c.db, cDBName, C.int(op), unsafe.Pointer(arg))
 	if rv != C.SQLITE_OK {
-		return c.lastError()
+		if err := c.lastError(); err != nil {
+			return err
+		}
+		return ErrNo(rv)
 	}
 	return nil
 }
